@@ -64,6 +64,9 @@ public class GameActivity extends AppCompatActivity {
     private Point snakeFood;
     private int snakeDx = 1;
     private int snakeDy = 0;
+    private int pendingSnakeDx;
+    private int pendingSnakeDy;
+    private boolean hasPendingSnakeDirection;
     private List<TextView> snakeCells;
     private TextView snakeScoreText;
 
@@ -384,17 +387,31 @@ public class GameActivity extends AppCompatActivity {
     }
 
     private void setSnakeDirection(int dx, int dy) {
+        if (hasPendingSnakeDirection) {
+            return;
+        }
         if (snakeDx == -dx && snakeDy == -dy) {
             return;
         }
-        snakeDx = dx;
-        snakeDy = dy;
+        pendingSnakeDx = dx;
+        pendingSnakeDy = dy;
+        hasPendingSnakeDirection = true;
+    }
+
+    private void applyPendingSnakeDirection() {
+        if (!hasPendingSnakeDirection) {
+            return;
+        }
+        snakeDx = pendingSnakeDx;
+        snakeDy = pendingSnakeDy;
+        hasPendingSnakeDirection = false;
     }
 
     private void moveSnake() {
         if (snakeBody == null || snakeBody.isEmpty()) {
             return;
         }
+        applyPendingSnakeDirection();
         Point head = snakeBody.peekFirst();
         Point newHead = new Point(head.x + snakeDx, head.y + snakeDy);
         if (newHead.x < 0 || newHead.x >= SNAKE_GRID_SIZE || newHead.y < 0 || newHead.y >= SNAKE_GRID_SIZE) {
