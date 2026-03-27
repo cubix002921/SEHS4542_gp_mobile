@@ -40,6 +40,7 @@ public class GameActivity extends AppCompatActivity {
     private static final long WHAC_DURATION_MS = 20000;
     private static final long WHAC_MOLE_INTERVAL_MS = 700;
     private static final long SNAKE_TICK_MS = 450;
+    private static final String MOLE_EMOJI = "\uD83D\uDC39";
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random random = new Random();
@@ -309,7 +310,7 @@ public class GameActivity extends AppCompatActivity {
         }
         whacMoleIndex = nextIndex;
         Button moleButton = whacButtons.get(whacMoleIndex);
-        moleButton.setText("\uD83D\uDC39");
+        moleButton.setText(MOLE_EMOJI);
     }
 
     private void clearMole() {
@@ -380,7 +381,7 @@ public class GameActivity extends AppCompatActivity {
     }
 
     private void setSnakeDirection(int dx, int dy) {
-        if (snakeDx == -dx && snakeDy == -dy) {
+        if (snakeDx + dx == 0 && snakeDy + dy == 0) {
             return;
         }
         snakeDx = dx;
@@ -397,21 +398,19 @@ public class GameActivity extends AppCompatActivity {
             endSnakeGame();
             return;
         }
-        Point tail = snakeBody.peekLast();
-        boolean hitTail = newHead.equals(tail);
+        boolean willGrow = snakeFood != null && newHead.equals(snakeFood);
+        int index = 0;
+        int size = snakeBody.size();
         for (Point segment : snakeBody) {
+            boolean isTail = index == size - 1;
             if (segment.equals(newHead)) {
-                if (!segment.equals(tail)) {
+                if (willGrow || !isTail) {
                     endSnakeGame();
                     return;
                 }
                 break;
             }
-        }
-        boolean willGrow = snakeFood != null && newHead.equals(snakeFood);
-        if (hitTail && willGrow) {
-            endSnakeGame();
-            return;
+            index++;
         }
         snakeBody.addFirst(newHead);
         if (willGrow) {
