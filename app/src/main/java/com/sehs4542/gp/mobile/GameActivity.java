@@ -35,6 +35,8 @@ public class GameActivity extends AppCompatActivity {
     private static final int MEMORY_PAIRS = 8;
     private static final int WHAC_GRID_SIZE = 3;
     private static final int SNAKE_GRID_SIZE = 10;
+    private static final int MEMORY_MIN_SCORE = 10;
+    private static final int SNAKE_SCORE_PER_SEGMENT = 5;
 
     private static final long MEMORY_HIDE_DELAY_MS = 700;
     private static final long WHAC_DURATION_MS = 20000;
@@ -186,7 +188,7 @@ public class GameActivity extends AppCompatActivity {
                     if (state.matches == MEMORY_PAIRS) {
                         int baseScore = MEMORY_PAIRS * 10;
                         int penalty = Math.max(0, (state.moves - state.matches) * 2);
-                        int finalScore = Math.max(10, baseScore - penalty);
+                        int finalScore = Math.max(MEMORY_MIN_SCORE, baseScore - penalty);
                         handler.postDelayed(() -> finishGame(finalScore), 400);
                     }
                 } else {
@@ -498,7 +500,7 @@ public class GameActivity extends AppCompatActivity {
         }
         snakeRunning = false;
         handler.removeCallbacks(snakeRunnable);
-        int score = snakeBody == null ? 0 : snakeBody.size() * 5;
+        int score = snakeBody == null ? 0 : snakeBody.size() * SNAKE_SCORE_PER_SEGMENT;
         finishGame(score);
     }
 
