@@ -397,16 +397,21 @@ public class GameActivity extends AppCompatActivity {
             endSnakeGame();
             return;
         }
-        boolean willGrow = snakeFood != null && newHead.equals(snakeFood);
         Point tail = snakeBody.peekLast();
+        boolean hitTail = newHead.equals(tail);
         for (Point segment : snakeBody) {
             if (segment.equals(newHead)) {
-                if (!willGrow && segment.equals(tail)) {
-                    break;
+                if (!segment.equals(tail)) {
+                    endSnakeGame();
+                    return;
                 }
-                endSnakeGame();
-                return;
+                break;
             }
+        }
+        boolean willGrow = snakeFood != null && newHead.equals(snakeFood);
+        if (hitTail && willGrow) {
+            endSnakeGame();
+            return;
         }
         snakeBody.addFirst(newHead);
         if (willGrow) {
