@@ -129,13 +129,16 @@ public class GameActivity extends AppCompatActivity {
 
         List<Button> cards = new ArrayList<>();
         boolean[] matched = new boolean[values.size()];
-        int[] firstIndex = {-1};
-        boolean[] busy = {false};
-        int[] moves = {0};
-        int[] matches = {0};
+        class MemoryState {
+            int firstIndex = -1;
+            boolean busy;
+            int moves;
+            int matches;
+        }
+        MemoryState state = new MemoryState();
 
-        matchesText.setText(getString(R.string.memory_matches_template, matches[0]));
-        movesText.setText(getString(R.string.memory_moves_template, moves[0]));
+        matchesText.setText(getString(R.string.memory_matches_template, state.matches));
+        movesText.setText(getString(R.string.memory_moves_template, state.moves));
 
         int cardSize = dpToPx(64);
         for (int i = 0; i < values.size(); i++) {
@@ -151,47 +154,47 @@ public class GameActivity extends AppCompatActivity {
 
             int index = i;
             card.setOnClickListener(view -> {
-                if (busy[0] || matched[index]) {
+                if (state.busy || matched[index]) {
                     return;
                 }
-                if (index == firstIndex[0]) {
+                if (index == state.firstIndex) {
                     return;
                 }
                 card.setText(values.get(index));
                 card.setEnabled(false);
 
-                if (firstIndex[0] == -1) {
-                    firstIndex[0] = index;
+                if (state.firstIndex == -1) {
+                    state.firstIndex = index;
                     return;
                 }
 
-                moves[0] += 1;
-                movesText.setText(getString(R.string.memory_moves_template, moves[0]));
+                state.moves += 1;
+                movesText.setText(getString(R.string.memory_moves_template, state.moves));
 
-                int previousIndex = firstIndex[0];
+                int previousIndex = state.firstIndex;
                 Button previousCard = cards.get(previousIndex);
                 if (values.get(previousIndex).equals(values.get(index))) {
                     matched[previousIndex] = true;
                     matched[index] = true;
-                    matches[0] += 1;
-                    matchesText.setText(getString(R.string.memory_matches_template, matches[0]));
-                    firstIndex[0] = -1;
+                    state.matches += 1;
+                    matchesText.setText(getString(R.string.memory_matches_template, state.matches));
+                    state.firstIndex = -1;
 
-                    if (matches[0] == MEMORY_PAIRS) {
+                    if (state.matches == MEMORY_PAIRS) {
                         int baseScore = MEMORY_PAIRS * 10;
-                        int penalty = Math.max(0, (moves[0] - matches[0]) * 2);
+                        int penalty = Math.max(0, (state.moves - state.matches) * 2);
                         int finalScore = Math.max(10, baseScore - penalty);
                         handler.postDelayed(() -> finishGame(finalScore), 400);
                     }
                 } else {
-                    busy[0] = true;
+                    state.busy = true;
                     handler.postDelayed(() -> {
                         previousCard.setText(R.string.memory_card_back);
                         previousCard.setEnabled(true);
                         card.setText(R.string.memory_card_back);
                         card.setEnabled(true);
-                        firstIndex[0] = -1;
-                        busy[0] = false;
+                        state.firstIndex = -1;
+                        state.busy = false;
                     }, MEMORY_HIDE_DELAY_MS);
                 }
             });
@@ -381,7 +384,7 @@ public class GameActivity extends AppCompatActivity {
     }
 
     private void setSnakeDirection(int dx, int dy) {
-        if (snakeDx + dx == 0 && snakeDy + dy == 0) {
+        if (snakeDx == -dx && snakeDy == -dy) {
             return;
         }
         snakeDx = dx;
