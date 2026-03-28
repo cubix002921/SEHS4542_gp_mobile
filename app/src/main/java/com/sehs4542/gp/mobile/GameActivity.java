@@ -2,10 +2,7 @@ package com.sehs4542.gp.mobile;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
 import android.graphics.Point;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
@@ -158,44 +155,22 @@ public class GameActivity extends AppCompatActivity {
         timerText.setText(getString(R.string.memory_timer_template, timeSec));
 
         // Build card value list: enough symbols for 'pairs' pairs
-        int[] allSymbols = {
-            R.drawable.fruit_apple,
-            R.drawable.fruit_banana,
-            R.drawable.fruit_grape,
-            R.drawable.fruit_watermelon,
-            R.drawable.fruit_strawberry,
-            R.drawable.fruit_cherry,
-            R.drawable.fruit_pineapple,
-            R.drawable.fruit_kiwi,
-            R.drawable.fruit_peach,
-            R.drawable.fruit_pear,
-            R.drawable.fruit_orange,
-            R.drawable.fruit_mango,
-            R.drawable.fruit_lemon,
-            R.drawable.fruit_blueberry,
-            R.drawable.fruit_coconut,
-            R.drawable.fruit_melon
+        String[] allSymbols = {
+            "🍎", "🍌", "🍇", "🍉", "🍓", "🍒", "🍍", "🥝",
+            "🍑", "🍐", "🍊", "🥭", "🍋", "🫐", "🥥", "🍈",
+            "🎈", "🎨", "⭐", "🌟", "🎭", "🎪", "🎯", "🎲"
         };
         if (pairs > allSymbols.length) {
-            throw new IllegalStateException("Not enough fruit symbols for memory level");
+            throw new IllegalStateException("Not enough emoji symbols for memory level");
         }
-        List<Integer> values = new ArrayList<>();
+        List<String> values = new ArrayList<>();
         for (int p = 0; p < pairs; p++) {
             values.add(allSymbols[p]);
             values.add(allSymbols[p]);
         }
         Collections.shuffle(values);
 
-        // Pre-scale drawables for the symbols used in this level to avoid repeated allocation
         int cardSize = dpToPx(60);
-        int iconSize = dpToPx(36);
-        android.util.SparseArray<Drawable> scaledCache = new android.util.SparseArray<>();
-        for (int p = 0; p < pairs; p++) {
-            int resId = allSymbols[p];
-            if (scaledCache.get(resId) == null) {
-                scaledCache.put(resId, scaledDrawable(resId, iconSize));
-            }
-        }
 
         List<Button> cards = new ArrayList<>();
         boolean[] matched = new boolean[values.size()];
@@ -243,9 +218,8 @@ public class GameActivity extends AppCompatActivity {
                 if (index == state.firstIndex) {
                     return;
                 }
-                card.setText("");
-                card.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                        null, scaledCache.get(values.get(index)), null, null);
+                card.setText(values.get(index));
+                card.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
                 card.setEnabled(false);
 
                 if (state.firstIndex == -1) {
@@ -279,10 +253,8 @@ public class GameActivity extends AppCompatActivity {
                     state.busy = true;
                     handler.postDelayed(() -> {
                         previousCard.setText(R.string.memory_card_back);
-                        previousCard.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
                         previousCard.setEnabled(true);
                         card.setText(R.string.memory_card_back);
-                        card.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
                         card.setEnabled(true);
                         state.firstIndex = -1;
                         state.busy = false;
@@ -696,16 +668,6 @@ public class GameActivity extends AppCompatActivity {
         intent.putExtra(EXTRA_MEMORY_LEVEL, memoryLevel);
         startActivity(intent);
         finish();
-    }
-
-    private Drawable scaledDrawable(int resId, int sizePx) {
-        Bitmap bmp = android.graphics.BitmapFactory.decodeResource(getResources(), resId);
-        if (bmp == null) return null;
-        Bitmap scaled = Bitmap.createScaledBitmap(bmp, sizePx, sizePx, true);
-        if (scaled != bmp) {
-            bmp.recycle();
-        }
-        return new BitmapDrawable(getResources(), scaled);
     }
 
     private int dpToPx(int dp) {
