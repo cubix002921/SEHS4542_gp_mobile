@@ -30,15 +30,22 @@ public class GameActivity extends AppCompatActivity {
     static final String EXTRA_GAME_SCORE = "extra_game_score";
     static final String EXTRA_TOTAL_SCORE = "extra_total_score";
     static final String EXTRA_GAME_NAME = "extra_game_name";
+    static final String EXTRA_MEMORY_LEVEL = "extra_memory_level";
+    static final int    GAME_NUMBER_MEMORY  = 1;
 
-    private static final int MEMORY_GRID_SIZE = 4;
-    private static final int MEMORY_PAIRS = 8;
+    // --- Memory game level configs (index = level - 1) ---
+    static final int   MEMORY_LEVEL_COUNT   = 5;
+    private static final int[] MEMORY_LEVEL_COLS    = {4, 4, 4, 4, 4};
+    private static final int[] MEMORY_LEVEL_ROWS    = {4, 4, 4, 5, 5};
+    private static final int[] MEMORY_LEVEL_TIME_SEC = {60, 50, 40, 55, 45};
+    private static final long[] MEMORY_LEVEL_HIDE_MS = {700, 600, 500, 600, 500};
+
+    private static final int MEMORY_MIN_SCORE = 10;
+
     private static final int WHAC_GRID_SIZE = 3;
     private static final int SNAKE_GRID_SIZE = 10;
-    private static final int MEMORY_MIN_SCORE = 10;
     private static final int SNAKE_SCORE_PER_SEGMENT = 5;
 
-    private static final long MEMORY_HIDE_DELAY_MS = 700;
     private static final long WHAC_DURATION_MS = 20000;
     private static final long WHAC_MOLE_INTERVAL_MS = 700;
     private static final long SNAKE_TICK_MS = 450;
@@ -49,7 +56,10 @@ public class GameActivity extends AppCompatActivity {
 
     private FrameLayout gameContainer;
     private int gameNumber;
+    private int memoryLevel;
     private String gameName;
+
+    private CountDownTimer memoryTimer;
 
     private CountDownTimer whacTimer;
     private Runnable whacMoleRunnable;
@@ -82,13 +92,14 @@ public class GameActivity extends AppCompatActivity {
         TextView gameDescription = findViewById(R.id.text_game_description);
 
         gameNumber = getIntent().getIntExtra(EXTRA_GAME_NUMBER, 1);
+        memoryLevel = getIntent().getIntExtra(EXTRA_MEMORY_LEVEL, 1);
         gameName = getGameName(gameNumber);
 
         gameTitle.setText(gameName);
         gameDescription.setText(getGameDescription(gameNumber));
 
         switch (gameNumber) {
-            case 1:
+            case GAME_NUMBER_MEMORY:
                 setupMemoryGame();
                 break;
             case 2:
@@ -106,6 +117,9 @@ public class GameActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (memoryTimer != null) {
+            memoryTimer.cancel();
+        }
         if (whacTimer != null) {
             whacTimer.cancel();
         }
@@ -115,37 +129,55 @@ public class GameActivity extends AppCompatActivity {
     }
 
     private void setupMemoryGame() {
+        int lvlIdx = memoryLevel - 1;
+        int cols = MEMORY_LEVEL_COLS[lvlIdx];
+        int rows = MEMORY_LEVEL_ROWS[lvlIdx];
+        int pairs = (cols * rows) / 2;
+        int timeSec = MEMORY_LEVEL_TIME_SEC[lvlIdx];
+        long hideMs = MEMORY_LEVEL_HIDE_MS[lvlIdx];
+
         View memoryView = getLayoutInflater().inflate(R.layout.layout_game_memory, gameContainer, false);
         gameContainer.addView(memoryView);
 
+        TextView levelText   = memoryView.findViewById(R.id.text_memory_level);
+        TextView timerText   = memoryView.findViewById(R.id.text_memory_timer);
         TextView matchesText = memoryView.findViewById(R.id.text_memory_matches);
-        TextView movesText = memoryView.findViewById(R.id.text_memory_moves);
-        GridLayout grid = memoryView.findViewById(R.id.grid_memory);
-        grid.setRowCount(MEMORY_GRID_SIZE);
-        grid.setColumnCount(MEMORY_GRID_SIZE);
+        TextView movesText   = memoryView.findViewById(R.id.text_memory_moves);
+        GridLayout grid      = memoryView.findViewById(R.id.grid_memory);
 
+        grid.setRowCount(rows);
+        grid.setColumnCount(cols);
+
+        levelText.setText(getString(R.string.memory_level_template, memoryLevel));
+        timerText.setText(getString(R.string.memory_timer_template, timeSec));
+
+        // Build card value list: enough symbols for 'pairs' pairs
+        String[] allSymbols = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
+                               "K", "L", "M", "N", "O", "P"};
         List<String> values = new ArrayList<>();
-        String[] symbols = new String[]{"A", "B", "C", "D", "E", "F", "G", "H"};
-        for (String symbol : symbols) {
-            values.add(symbol);
-            values.add(symbol);
+        for (int p = 0; p < pairs; p++) {
+            values.add(allSymbols[p]);
+            values.add(allSymbols[p]);
         }
         Collections.shuffle(values);
 
         List<Button> cards = new ArrayList<>();
         boolean[] matched = new boolean[values.size()];
+
         class MemoryState {
             int firstIndex = -1;
             boolean busy;
             int moves;
             int matches;
+            int remainingSeconds = timeSec;
+            boolean finished;
         }
         MemoryState state = new MemoryState();
 
-        matchesText.setText(getString(R.string.memory_matches_template, state.matches));
+        matchesText.setText(getString(R.string.memory_matches_template, state.matches, pairs));
         movesText.setText(getString(R.string.memory_moves_template, state.moves));
 
-        int cardSize = dpToPx(64);
+        int cardSize = dpToPx(60);
         for (int i = 0; i < values.size(); i++) {
             Button card = new Button(this);
             card.setAllCaps(false);
@@ -153,13 +185,13 @@ public class GameActivity extends AppCompatActivity {
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
             params.width = cardSize;
             params.height = cardSize;
-            params.rowSpec = GridLayout.spec(i / MEMORY_GRID_SIZE);
-            params.columnSpec = GridLayout.spec(i % MEMORY_GRID_SIZE);
+            params.rowSpec = GridLayout.spec(i / cols);
+            params.columnSpec = GridLayout.spec(i % cols);
             card.setLayoutParams(params);
 
             int index = i;
             card.setOnClickListener(view -> {
-                if (state.busy || matched[index]) {
+                if (state.busy || state.finished || matched[index]) {
                     return;
                 }
                 if (index == state.firstIndex) {
@@ -182,14 +214,20 @@ public class GameActivity extends AppCompatActivity {
                     matched[previousIndex] = true;
                     matched[index] = true;
                     state.matches += 1;
-                    matchesText.setText(getString(R.string.memory_matches_template, state.matches));
+                    matchesText.setText(getString(R.string.memory_matches_template, state.matches, pairs));
                     state.firstIndex = -1;
 
-                    if (state.matches == MEMORY_PAIRS) {
-                        int baseScore = MEMORY_PAIRS * 10;
-                        int penalty = Math.max(0, (state.moves - state.matches) * 2);
-                        int finalScore = Math.max(MEMORY_MIN_SCORE, baseScore - penalty);
-                        handler.postDelayed(() -> finishGame(finalScore), 400);
+                    if (state.matches == pairs) {
+                        state.finished = true;
+                        if (memoryTimer != null) {
+                            memoryTimer.cancel();
+                        }
+                        int wrongMoves = Math.max(0, state.moves - state.matches);
+                        int baseScore = pairs * 10;
+                        int timeBonus = state.remainingSeconds * memoryLevel * 2;
+                        int penalty = wrongMoves * 3;
+                        int levelScore = Math.max(MEMORY_MIN_SCORE, baseScore + timeBonus - penalty);
+                        handler.postDelayed(() -> finishMemoryLevel(levelScore), 400);
                     }
                 } else {
                     state.busy = true;
@@ -200,13 +238,57 @@ public class GameActivity extends AppCompatActivity {
                         card.setEnabled(true);
                         state.firstIndex = -1;
                         state.busy = false;
-                    }, MEMORY_HIDE_DELAY_MS);
+                    }, hideMs);
                 }
             });
 
             cards.add(card);
             grid.addView(card);
         }
+
+        // Countdown timer
+        memoryTimer = new CountDownTimer((long) timeSec * 1000, 1000) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                state.remainingSeconds = (int) (millisUntilFinished / 1000);
+                timerText.setText(getString(R.string.memory_timer_template, state.remainingSeconds));
+            }
+
+            @Override
+            public void onFinish() {
+                if (state.finished) {
+                    return;
+                }
+                state.finished = true;
+                state.remainingSeconds = 0;
+                timerText.setText(getString(R.string.memory_time_up));
+                // Disable all remaining cards
+                for (Button c : cards) {
+                    c.setEnabled(false);
+                }
+                // Partial score: only matched pairs count, no time bonus
+                int partialScore = state.matches * 10;
+                handler.postDelayed(() -> finishMemoryLevel(partialScore), 800);
+            }
+        };
+        memoryTimer.start();
+    }
+
+    /** After a memory level finishes, go to next level or ScoreActivity. */
+    private void finishMemoryLevel(int levelScore) {
+        SharedPreferences prefs = getSharedPreferences(UsernameActivity.PREFS_NAME, MODE_PRIVATE);
+        int currentTotal = prefs.getInt(UsernameActivity.KEY_TOTAL_SCORE, 0);
+        int updatedTotal = currentTotal + levelScore;
+        prefs.edit().putInt(UsernameActivity.KEY_TOTAL_SCORE, updatedTotal).apply();
+
+        Intent intent = new Intent(GameActivity.this, ScoreActivity.class);
+        intent.putExtra(EXTRA_GAME_NUMBER, gameNumber);
+        intent.putExtra(EXTRA_GAME_SCORE, levelScore);
+        intent.putExtra(EXTRA_TOTAL_SCORE, updatedTotal);
+        intent.putExtra(EXTRA_GAME_NAME, gameName);
+        intent.putExtra(EXTRA_MEMORY_LEVEL, memoryLevel);
+        startActivity(intent);
+        finish();
     }
 
     private void setupWhacGame() {
@@ -487,8 +569,8 @@ public class GameActivity extends AppCompatActivity {
         }
         boolean isHead = true;
         for (Point segment : snakeBody) {
-            int index = segment.y * SNAKE_GRID_SIZE + segment.x;
-            snakeCells.get(index).setBackgroundColor(isHead ? headColor : bodyColor);
+            int idx = segment.y * SNAKE_GRID_SIZE + segment.x;
+            snakeCells.get(idx).setBackgroundColor(isHead ? headColor : bodyColor);
             isHead = false;
         }
         snakeScoreText.setText(getString(R.string.snake_score_template, snakeBody.size()));
@@ -519,8 +601,8 @@ public class GameActivity extends AppCompatActivity {
 
     private String getGameName(int gameNumber) {
         switch (gameNumber) {
-            case 1:
-                return getString(R.string.game_name_memory);
+            case GAME_NUMBER_MEMORY:
+                return getString(R.string.memory_game_level_name, memoryLevel);
             case 2:
                 return getString(R.string.game_name_whac);
             case 3:
@@ -532,8 +614,14 @@ public class GameActivity extends AppCompatActivity {
 
     private String getGameDescription(int gameNumber) {
         switch (gameNumber) {
-            case 1:
-                return getString(R.string.game_description_memory);
+            case GAME_NUMBER_MEMORY: {
+                int lvlIdx = memoryLevel - 1;
+                int cols = MEMORY_LEVEL_COLS[lvlIdx];
+                int rows = MEMORY_LEVEL_ROWS[lvlIdx];
+                int pairs = (cols * rows) / 2;
+                int timeSec = MEMORY_LEVEL_TIME_SEC[lvlIdx];
+                return getString(R.string.memory_level_description, memoryLevel, pairs, timeSec);
+            }
             case 2:
                 return getString(R.string.game_description_whac);
             case 3:
@@ -554,6 +642,7 @@ public class GameActivity extends AppCompatActivity {
         intent.putExtra(EXTRA_GAME_SCORE, gameScore);
         intent.putExtra(EXTRA_TOTAL_SCORE, updatedTotal);
         intent.putExtra(EXTRA_GAME_NAME, gameName);
+        intent.putExtra(EXTRA_MEMORY_LEVEL, memoryLevel);
         startActivity(intent);
         finish();
     }

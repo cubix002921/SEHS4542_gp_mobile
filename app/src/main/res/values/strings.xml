@@ -29,9 +29,16 @@
     <string name="game_button_4">Mini Game 4</string>
     <string name="game_button_5">Mini Game 5</string>
     <string name="game_button_6">Mini Game 6</string>
-    <string name="memory_matches_template">Matches: %1$d/8</string>
+    <string name="memory_level_template">Level: %1$d / 5</string>
+    <string name="memory_timer_template">Time: %1$ds</string>
+    <string name="memory_time_up">Time\'s Up!</string>
+    <string name="memory_matches_template">Matches: %1$d / %2$d</string>
     <string name="memory_moves_template">Moves: %1$d</string>
     <string name="memory_card_back">?</string>
+    <string name="memory_game_level_name">Memory - Level %1$d</string>
+    <string name="memory_level_description">Level %1$d / 5  ·  Find %2$d pairs in %3$d seconds</string>
+    <string name="memory_level_score_template">Level %1$d Score: %2$d</string>
+    <string name="next_level_button">Next Level →</string>
     <string name="whac_timer_template">Time: %1$ds</string>
     <string name="whac_score_template">Score: %1$d</string>
     <string name="whac_start">Start</string>
