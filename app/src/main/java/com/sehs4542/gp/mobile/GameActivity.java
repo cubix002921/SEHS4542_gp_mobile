@@ -253,8 +253,10 @@ public class GameActivity extends AppCompatActivity {
                     state.busy = true;
                     handler.postDelayed(() -> {
                         previousCard.setText(R.string.memory_card_back);
+                        previousCard.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
                         previousCard.setEnabled(true);
                         card.setText(R.string.memory_card_back);
+                        card.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
                         card.setEnabled(true);
                         state.firstIndex = -1;
                         state.busy = false;
