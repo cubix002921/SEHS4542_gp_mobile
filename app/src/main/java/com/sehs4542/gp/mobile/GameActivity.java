@@ -2,7 +2,10 @@ package com.sehs4542.gp.mobile;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.graphics.Point;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
@@ -31,6 +34,7 @@ public class GameActivity extends AppCompatActivity {
     static final String EXTRA_TOTAL_SCORE = "extra_total_score";
     static final String EXTRA_GAME_NAME = "extra_game_name";
     static final String EXTRA_MEMORY_LEVEL = "extra_memory_level";
+    static final String EXTRA_LEVEL_COMPLETED = "extra_level_completed";
     static final int    GAME_NUMBER_MEMORY  = 1;
 
     // --- Memory game level configs (index = level - 1) ---
@@ -41,6 +45,7 @@ public class GameActivity extends AppCompatActivity {
     private static final long[] MEMORY_LEVEL_HIDE_MS = {700, 600, 500, 600, 500};
 
     private static final int MEMORY_MIN_SCORE = 10;
+    private static final int MEMORY_POINTS_PER_PAIR = 10;
 
     private static final int WHAC_GRID_SIZE = 3;
     private static final int SNAKE_GRID_SIZE = 10;
@@ -143,6 +148,7 @@ public class GameActivity extends AppCompatActivity {
         TextView timerText   = memoryView.findViewById(R.id.text_memory_timer);
         TextView matchesText = memoryView.findViewById(R.id.text_memory_matches);
         TextView movesText   = memoryView.findViewById(R.id.text_memory_moves);
+        TextView scoreText   = memoryView.findViewById(R.id.text_memory_score);
         GridLayout grid      = memoryView.findViewById(R.id.grid_memory);
 
         grid.setRowCount(rows);
@@ -180,6 +186,17 @@ public class GameActivity extends AppCompatActivity {
         }
         Collections.shuffle(values);
 
+        // Pre-scale drawables for the symbols used in this level to avoid repeated allocation
+        int cardSize = dpToPx(60);
+        int iconSize = cardSize - dpToPx(8);
+        android.util.SparseArray<Drawable> scaledCache = new android.util.SparseArray<>();
+        for (int p = 0; p < pairs; p++) {
+            int resId = allSymbols[p];
+            if (scaledCache.get(resId) == null) {
+                scaledCache.put(resId, scaledDrawable(resId, iconSize));
+            }
+        }
+
         List<Button> cards = new ArrayList<>();
         boolean[] matched = new boolean[values.size()];
 
@@ -190,18 +207,26 @@ public class GameActivity extends AppCompatActivity {
             int matches;
             int remainingSeconds = timeSec;
             boolean finished;
+
+            int currentScore() {
+                int wrongMoves = Math.max(0, moves - matches);
+                int baseScore = pairs * MEMORY_POINTS_PER_PAIR;
+                int timeBonus = remainingSeconds * memoryLevel * 2;
+                int penalty = wrongMoves * 3;
+                return Math.max(MEMORY_MIN_SCORE, baseScore + timeBonus - penalty);
+            }
         }
         MemoryState state = new MemoryState();
 
         matchesText.setText(getString(R.string.memory_matches_template, state.matches, pairs));
         movesText.setText(getString(R.string.memory_moves_template, state.moves));
+        scoreText.setText(getString(R.string.memory_score_template, state.currentScore()));
 
-        int cardSize = dpToPx(60);
         for (int i = 0; i < values.size(); i++) {
             Button card = new Button(this);
             card.setAllCaps(false);
             card.setText(R.string.memory_card_back);
-            card.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0);
+            card.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
             params.width = cardSize;
             params.height = cardSize;
@@ -218,7 +243,8 @@ public class GameActivity extends AppCompatActivity {
                     return;
                 }
                 card.setText("");
-                card.setCompoundDrawablesRelativeWithIntrinsicBounds(0, values.get(index), 0, 0);
+                card.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                        null, scaledCache.get(values.get(index)), null, null);
                 card.setEnabled(false);
 
                 if (state.firstIndex == -1) {
@@ -228,6 +254,7 @@ public class GameActivity extends AppCompatActivity {
 
                 state.moves += 1;
                 movesText.setText(getString(R.string.memory_moves_template, state.moves));
+                scoreText.setText(getString(R.string.memory_score_template, state.currentScore()));
 
                 int previousIndex = state.firstIndex;
                 Button previousCard = cards.get(previousIndex);
@@ -236,6 +263,7 @@ public class GameActivity extends AppCompatActivity {
                     matched[index] = true;
                     state.matches += 1;
                     matchesText.setText(getString(R.string.memory_matches_template, state.matches, pairs));
+                    scoreText.setText(getString(R.string.memory_score_template, state.currentScore()));
                     state.firstIndex = -1;
 
                     if (state.matches == pairs) {
@@ -243,21 +271,17 @@ public class GameActivity extends AppCompatActivity {
                         if (memoryTimer != null) {
                             memoryTimer.cancel();
                         }
-                        int wrongMoves = Math.max(0, state.moves - state.matches);
-                        int baseScore = pairs * 10;
-                        int timeBonus = state.remainingSeconds * memoryLevel * 2;
-                        int penalty = wrongMoves * 3;
-                        int levelScore = Math.max(MEMORY_MIN_SCORE, baseScore + timeBonus - penalty);
-                        handler.postDelayed(() -> finishMemoryLevel(levelScore), 400);
+                        int levelScore = state.currentScore();
+                        handler.postDelayed(() -> finishMemoryLevel(levelScore, true), 400);
                     }
                 } else {
                     state.busy = true;
                     handler.postDelayed(() -> {
                         previousCard.setText(R.string.memory_card_back);
-                        previousCard.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0);
+                        previousCard.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
                         previousCard.setEnabled(true);
                         card.setText(R.string.memory_card_back);
-                        card.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0);
+                        card.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
                         card.setEnabled(true);
                         state.firstIndex = -1;
                         state.busy = false;
@@ -275,6 +299,7 @@ public class GameActivity extends AppCompatActivity {
             public void onTick(long millisUntilFinished) {
                 state.remainingSeconds = (int) (millisUntilFinished / 1000);
                 timerText.setText(getString(R.string.memory_timer_template, state.remainingSeconds));
+                scoreText.setText(getString(R.string.memory_score_template, state.currentScore()));
             }
 
             @Override
@@ -284,21 +309,22 @@ public class GameActivity extends AppCompatActivity {
                 }
                 state.finished = true;
                 state.remainingSeconds = 0;
+                // Partial score: only matched pairs count, no time bonus
+                int partialScore = state.matches * MEMORY_POINTS_PER_PAIR;
                 timerText.setText(getString(R.string.memory_time_up));
+                scoreText.setText(getString(R.string.memory_score_template, partialScore));
                 // Disable all remaining cards
                 for (Button c : cards) {
                     c.setEnabled(false);
                 }
-                // Partial score: only matched pairs count, no time bonus
-                int partialScore = state.matches * 10;
-                handler.postDelayed(() -> finishMemoryLevel(partialScore), 800);
+                handler.postDelayed(() -> finishMemoryLevel(partialScore, false), 800);
             }
         };
         memoryTimer.start();
     }
 
     /** After a memory level finishes, go to next level or ScoreActivity. */
-    private void finishMemoryLevel(int levelScore) {
+    private void finishMemoryLevel(int levelScore, boolean completed) {
         SharedPreferences prefs = getSharedPreferences(UsernameActivity.PREFS_NAME, MODE_PRIVATE);
         int currentTotal = prefs.getInt(UsernameActivity.KEY_TOTAL_SCORE, 0);
         int updatedTotal = currentTotal + levelScore;
@@ -310,6 +336,7 @@ public class GameActivity extends AppCompatActivity {
         intent.putExtra(EXTRA_TOTAL_SCORE, updatedTotal);
         intent.putExtra(EXTRA_GAME_NAME, gameName);
         intent.putExtra(EXTRA_MEMORY_LEVEL, memoryLevel);
+        intent.putExtra(EXTRA_LEVEL_COMPLETED, completed);
         startActivity(intent);
         finish();
     }
@@ -668,6 +695,16 @@ public class GameActivity extends AppCompatActivity {
         intent.putExtra(EXTRA_MEMORY_LEVEL, memoryLevel);
         startActivity(intent);
         finish();
+    }
+
+    private Drawable scaledDrawable(int resId, int sizePx) {
+        Bitmap bmp = android.graphics.BitmapFactory.decodeResource(getResources(), resId);
+        if (bmp == null) return null;
+        Bitmap scaled = Bitmap.createScaledBitmap(bmp, sizePx, sizePx, true);
+        if (scaled != bmp) {
+            bmp.recycle();
+        }
+        return new BitmapDrawable(getResources(), scaled);
     }
 
     private int dpToPx(int dp) {
