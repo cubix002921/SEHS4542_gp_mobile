@@ -28,6 +28,7 @@ public class ScoreActivity extends AppCompatActivity {
         int gameScore  = getIntent().getIntExtra(GameActivity.EXTRA_GAME_SCORE, 0);
         int totalScore = getIntent().getIntExtra(GameActivity.EXTRA_TOTAL_SCORE, gameScore);
         int memoryLevel = getIntent().getIntExtra(GameActivity.EXTRA_MEMORY_LEVEL, 1);
+        boolean levelCompleted = getIntent().getBooleanExtra(GameActivity.EXTRA_LEVEL_COMPLETED, true);
 
         usernameText.setText(getString(R.string.player_name_template, username));
         totalScoreText.setText(getString(R.string.total_score_template, totalScore));
@@ -38,8 +39,8 @@ public class ScoreActivity extends AppCompatActivity {
             gameScoreText.setText(getString(R.string.game_score_template, gameNumber, gameScore));
         }
 
-        // Show "Next Level" button for memory game levels 1–4
-        if (gameNumber == GameActivity.GAME_NUMBER_MEMORY && memoryLevel < GameActivity.MEMORY_LEVEL_COUNT) {
+        // Show "Next Level" button only when the level was completed and there are more levels
+        if (gameNumber == GameActivity.GAME_NUMBER_MEMORY && levelCompleted && memoryLevel < GameActivity.MEMORY_LEVEL_COUNT) {
             nextLevelButton.setVisibility(View.VISIBLE);
             backButton.setVisibility(View.GONE);
             int nextLevel = memoryLevel + 1;
