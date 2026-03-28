@@ -41,4 +41,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:text="@string/back_to_menu" />
+
+    <Button
+        android:id="@+id/button_next_level"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/next_level_button"
+        android:visibility="gone" />
 </LinearLayout>
