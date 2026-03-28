@@ -188,7 +188,7 @@ public class GameActivity extends AppCompatActivity {
 
         // Pre-scale drawables for the symbols used in this level to avoid repeated allocation
         int cardSize = dpToPx(60);
-        int iconSize = cardSize - dpToPx(8);
+        int iconSize = dpToPx(36);
         android.util.SparseArray<Drawable> scaledCache = new android.util.SparseArray<>();
         for (int p = 0; p < pairs; p++) {
             int resId = allSymbols[p];
@@ -225,6 +225,7 @@ public class GameActivity extends AppCompatActivity {
         for (int i = 0; i < values.size(); i++) {
             Button card = new Button(this);
             card.setAllCaps(false);
+            card.setGravity(Gravity.CENTER);
             card.setText(R.string.memory_card_back);
             card.setCompoundDrawablesRelativeWithIntrinsicBounds(null, null, null, null);
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
