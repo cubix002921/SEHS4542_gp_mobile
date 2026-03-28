@@ -152,8 +152,8 @@ public class GameActivity extends AppCompatActivity {
         timerText.setText(getString(R.string.memory_timer_template, timeSec));
 
         // Build card value list: enough symbols for 'pairs' pairs
-        String[] allSymbols = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
-                               "K", "L", "M", "N", "O", "P"};
+        String[] allSymbols = {"🍎", "🍌", "🍇", "🍉", "🍓", "🍒", "🍍", "🥝", "🍑", "🍐",
+                               "🍊", "🥭", "🍋", "🫐", "🥥", "🍈"};
         List<String> values = new ArrayList<>();
         for (int p = 0; p < pairs; p++) {
             values.add(allSymbols[p]);
